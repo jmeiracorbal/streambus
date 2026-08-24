@@ -103,6 +103,24 @@ class ClientEvent(StreamBusEvent):
 ```
 <!-- /rule:local-event-class -->
 
+<!-- post-merge-workflow -->
+## Post-merge
+
+Después de mergear un PR:
+
+1. Cambiar a `main` localmente y hacer pull.
+2. Ejecutar `uv run pytest` — si aparece algún fallo, abrir una rama nueva, corregirlo y hacer PR.
+3. Si todo verde: actualizar la versión en `pyproject.toml` y en `streambus/__init__.py` (`__version__`).
+4. Actualizar la documentación si el cambio afecta comportamiento visible para el caller.
+5. Publicar el tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+6. Publicar en PyPI: `uv build && uv publish`.
+
+**Archivos con versión:**
+- `pyproject.toml` — campo `version`
+- `streambus/__init__.py` — `__version__`
+
+<!-- /post-merge-workflow -->
+
 <!-- rule:exceptions -->
 ## Jerarquía de excepciones
 
