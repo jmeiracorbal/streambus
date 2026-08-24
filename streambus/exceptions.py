@@ -8,3 +8,7 @@ class ConfigurationError(StreambusError):
 
 class EventValidationError(StreambusError):
     pass
+
+
+class TransportConnectionError(StreambusError):
+    pass
