@@ -113,7 +113,7 @@ Después de mergear un PR:
 3. Si todo verde: actualizar la versión en `pyproject.toml` y en `streambus/__init__.py` (`__version__`).
 4. Actualizar la documentación si el cambio afecta comportamiento visible para el caller.
 5. Publicar el tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
-6. Publicar en PyPI: `uv build && uv publish`.
+   El workflow `.github/workflows/release.yml` se dispara automáticamente y publica en PyPI vía OIDC.
 
 **Archivos con versión:**
 - `pyproject.toml` — campo `version`
