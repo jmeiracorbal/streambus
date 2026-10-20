@@ -37,12 +37,10 @@ class OrderCreated(StreamBusEvent):
 Publish it:
 
 ```python
-from streambus import EventPublisher, RedisConfig
+from streambus import EventPublisher, RedisConfig, RedisStreamsTransport
 
-publisher = EventPublisher(
-    stream="orders:events",
-    config=RedisConfig(url="redis://localhost:6379"),
-)
+transport = RedisStreamsTransport(RedisConfig(url="redis://localhost:6379"))
+publisher = EventPublisher(stream="orders:events", transport=transport)
 
 publisher.publish(
     OrderCreated(
@@ -57,7 +55,7 @@ publisher.publish(
 Consume it:
 
 ```python
-from streambus import EventListener, RedisConfig
+from streambus import EventListener, RedisConfig, RedisStreamsTransport
 
 def handle_order(event: OrderCreated) -> None:
     print(f"New order {event.order_id}: total {event.total}")
@@ -67,7 +65,7 @@ EventListener(
     group="notifications",
     handler=handle_order,
     event_class=OrderCreated,
-    config=RedisConfig(url="redis://localhost:6379"),
+    transport=RedisStreamsTransport(RedisConfig(url="redis://localhost:6379")),
 ).run()
 ```
 
@@ -75,7 +73,7 @@ EventListener(
 
 streambus uses [Redis Streams](https://redis.io/docs/data-types/streams/) for transport: persistent storage, consumer groups, and at-least-once delivery. The library manages group creation, the blocking read loop, message acknowledgement, and automatic reconnection on connection loss.
 
-Each consumer group processes events independently. A message published to a stream reaches every group exactly once.
+Each consumer group processes events independently. Delivery is at least once: unacknowledged messages can be redelivered, so handlers must be idempotent. The listener reclaims idle pending entries using Redis XAUTOCLAIM before reading new entries (Redis 6.2+ required).
 
 ## Events
 
@@ -110,11 +108,12 @@ EventListener(
     group="consumer-group",   # required
     handler=my_handler,       # required — callable(event) -> None
     event_class=MyEvent,      # required — must subclass StreamBusEvent
-    config=RedisConfig(...),  # required
+    transport=RedisStreamsTransport(RedisConfig(...)),  # required
     consumer=None,            # defaults to "{group}-1"
     batch_size=10,
     block_ms=5000,
     retry_delay=3.0,
+    pending_idle_ms=60000,  # minimum idle time before retrying pending entries
 )
 ```
 
@@ -123,7 +122,7 @@ EventListener(
 ```python
 EventPublisher(
     stream="stream:name",    # required
-    config=RedisConfig(...), # required
+    transport=RedisStreamsTransport(RedisConfig(...)), # required
 )
 ```
 
