@@ -21,6 +21,7 @@ class EventListener:
         batch_size: int = 10,
         block_ms: int = 5000,
         retry_delay: float = 3.0,
+        pending_idle_ms: int = 60000,
     ):
         if not stream:
             raise ConfigurationError("stream is required")
@@ -30,6 +31,8 @@ class EventListener:
             raise ConfigurationError("handler must be callable")
         if not (isinstance(event_class, type) and issubclass(event_class, StreamBusEvent)):
             raise ConfigurationError("event_class must be a subclass of StreamBusEvent")
+        if batch_size < 1 or block_ms < 0 or pending_idle_ms < 1:
+            raise ConfigurationError("batch_size must be positive, block_ms non-negative, and pending_idle_ms positive")
 
         self.stream = stream
         self.group = group
@@ -40,11 +43,17 @@ class EventListener:
         self.batch_size = batch_size
         self.block_ms = block_ms
         self.retry_delay = retry_delay
+        self.pending_idle_ms = pending_idle_ms
 
     def process_one_batch(self) -> int:
-        messages = self.transport.read(
-            self.stream, self.group, self.consumer, self.batch_size, self.block_ms,
+        # XAUTOCLAIM recovers unacknowledged messages from crashed/failed consumers.
+        messages = self.transport.claim_pending(
+            self.stream, self.group, self.consumer, self.batch_size, self.pending_idle_ms,
         )
+        if not messages:
+            messages = self.transport.read(
+                self.stream, self.group, self.consumer, self.batch_size, self.block_ms,
+            )
         count = 0
         for msg_id, data in messages:
             try:
@@ -53,6 +62,7 @@ class EventListener:
                 self.transport.ack(self.stream, self.group, msg_id)
                 count += 1
             except Exception:
+                # Leave the message in the pending entries list for retry after min idle.
                 logger.exception("error processing message %s", msg_id)
         return count
 
