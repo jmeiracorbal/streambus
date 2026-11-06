@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-4584b6?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-22c55e)](LICENSE)
 [![Release](https://github.com/jmeiracorbal/streambus/actions/workflows/release.yml/badge.svg)](https://github.com/jmeiracorbal/streambus/actions/workflows/release.yml)
-[![Tests](https://img.shields.io/badge/tests-18%20passed-22c55e)](#development)
+[![Tests](https://img.shields.io/badge/tests-26%20passed-22c55e)](#development)
 
 Lightweight event bus over Redis Streams. Define typed events, publish from one service, consume in others without boilerplate or framework dependencies.
 
@@ -69,6 +69,47 @@ EventListener(
     event_class=OrderCreated,
     config=RedisConfig(url="redis://localhost:6379"),
 ).run()
+```
+
+## Async support
+
+streambus ships async-native counterparts for both publisher and listener. They share the same API as the sync versions — the only difference is `async def` and `await`.
+
+```python
+import asyncio
+from streambus import AsyncEventListener, AsyncEventPublisher, AsyncRedisStreamsTransport, RedisConfig
+
+transport = AsyncRedisStreamsTransport(RedisConfig(url="redis://localhost:6379"))
+
+# Publish
+publisher = AsyncEventPublisher(stream="orders:events", transport=transport)
+await publisher.publish(OrderCreated(event_type="order.created", order_id="123", ...))
+
+# Consume
+async def handle_order(event: OrderCreated) -> None:
+    await db.save(event)
+
+await AsyncEventListener(
+    stream="orders:events",
+    group="notifications",
+    handler=handle_order,
+    event_class=OrderCreated,
+    transport=transport,
+).run()
+```
+
+Run multiple listeners alongside an HTTP server in the same event loop:
+
+```python
+async def main():
+    transport = AsyncRedisStreamsTransport(RedisConfig(url="redis://localhost:6379"))
+    await asyncio.gather(
+        AsyncEventListener(stream="orders:events", ..., transport=transport).run(),
+        AsyncEventListener(stream="users:events", ..., transport=transport).run(),
+        my_http_server(),
+    )
+
+asyncio.run(main())
 ```
 
 ## How it works
