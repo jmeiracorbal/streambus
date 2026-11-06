@@ -25,7 +25,7 @@ Repository = "https://github.com/jmeiracorbal/streambus"
 Issues = "https://github.com/jmeiracorbal/streambus/issues"
 
 [dependency-groups]
-dev = ["pytest", "pytest-mock", "fakeredis"]
+dev = ["pytest", "pytest-asyncio", "pytest-mock", "fakeredis"]
 
 [build-system]
 requires = ["hatchling"]
