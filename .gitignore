@@ -8,3 +8,5 @@ build/
 .venv/
 .uv/
 .pytest_cache/
+AGENTS.md
+CLAUDE.md
