@@ -69,6 +69,91 @@ EventListener(
 ).run()
 ```
 
+## Synchronous vs asynchronous order processing
+
+Consider a checkout flow that saves an order, updates inventory, and sends a confirmation email.
+
+### Synchronous processing
+
+```mermaid
+flowchart LR
+    A["Save order"] --> B["Update inventory"] --> C["Send email"] --> D["Return response"]
+```
+
+**Blocking operations run sequentially.** The request waits for every step to finish before returning a response.
+
+```python
+def place_order(order: OrderCreated) -> None:
+    save_order(order)
+    update_inventory(order)
+    send_confirmation_email(order)
+```
+
+Here, `save_order`, `update_inventory`, and `send_confirmation_email` represent application-defined blocking operations.
+
+### Asynchronous event processing
+
+```mermaid
+flowchart LR
+    A["Save order"] --> B["Publish order.created"] --> C["Return response"]
+    B -.-> D["Inventory consumer: update inventory"]
+    B -.-> E["Notification consumer: send email"]
+    B -. "Yield during Redis I/O" .-> F["Other HTTP requests"]
+```
+
+**The producer waits only for Redis to accept the event, not for the consumers to finish.** Two independent consumer groups can process the inventory update and email notification concurrently. During awaited I/O, the event loop can also serve other requests.
+
+```python
+import asyncio
+from streambus import (
+    AsyncEventListener,
+    AsyncEventPublisher,
+    AsyncRedisStreamsTransport,
+    RedisConfig,
+)
+
+config = RedisConfig(url="redis://localhost:6379")
+publisher = AsyncEventPublisher(
+    stream="orders:events",
+    transport=AsyncRedisStreamsTransport(config),
+)
+
+# HTTP request handler: these two awaits are sequential.
+async def place_order(order: OrderCreated) -> None:
+    await save_order(order)
+    await publisher.publish(order)
+
+# Independent workers, not called by place_order().
+async def on_inventory(event: OrderCreated) -> None:
+    await update_inventory(event)
+
+async def on_notification(event: OrderCreated) -> None:
+    await send_confirmation_email(event)
+
+async def run_workers() -> None:
+    inventory = AsyncEventListener(
+        stream="orders:events",
+        group="inventory",
+        handler=on_inventory,
+        event_class=OrderCreated,
+        transport=AsyncRedisStreamsTransport(config),
+    )
+    notifications = AsyncEventListener(
+        stream="orders:events",
+        group="notifications",
+        handler=on_notification,
+        event_class=OrderCreated,
+        transport=AsyncRedisStreamsTransport(config),
+    )
+    await asyncio.gather(inventory.run(), notifications.run())
+```
+
+The `OrderCreated` event is defined in [Quick start](#quick-start); the storage, inventory, and email functions are application-defined async I/O functions. Run `run_workers()` separately from the HTTP request handler, for example in a worker process.
+
+**Important:** `await save_order(order)` completes before `await publisher.publish(order)` starts. `await` does not automatically launch both operations in parallel. Each `AsyncEventListener` also awaits its own messages sequentially; the separate consumer groups above can progress independently.
+
+Both synchronous and asynchronous Streambus APIs support event-driven decoupling: `EventPublisher` / `EventListener` use blocking I/O, while `AsyncEventPublisher` / `AsyncEventListener` use non-blocking I/O with `asyncio`. This example compares an *inline synchronous workflow* with an *event-driven asynchronous workflow*, not two identical architectures. As delivery is at least once, consumer handlers must be idempotent.
+
 ## Async support
 
 streambus ships async-native counterparts for both publisher and listener. They share the same API as the sync versions — the only difference is `async def` and `await`.
