@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-4584b6?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-22c55e)](LICENSE)
 [![Release](https://github.com/jmeiracorbal/streambus/actions/workflows/release.yml/badge.svg)](https://github.com/jmeiracorbal/streambus/actions/workflows/release.yml)
-[![Tests](https://img.shields.io/badge/tests-26%20passed-22c55e)](#development)
+[![Tests](https://github.com/jmeiracorbal/streambus/actions/workflows/ci.yml/badge.svg)](https://github.com/jmeiracorbal/streambus/actions/workflows/ci.yml)
 
 Lightweight event bus over Redis Streams. Define typed events, publish from one service, consume in others without boilerplate or framework dependencies.
 
