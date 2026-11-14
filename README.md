@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-4584b6?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-22c55e)](LICENSE)
 [![Release](https://github.com/jmeiracorbal/streambus/actions/workflows/release.yml/badge.svg)](https://github.com/jmeiracorbal/streambus/actions/workflows/release.yml)
-[![Tests](https://img.shields.io/badge/tests-26%20passed-22c55e)](#development)
+[![Tests](https://github.com/jmeiracorbal/streambus/actions/workflows/ci.yml/badge.svg)](https://github.com/jmeiracorbal/streambus/actions/workflows/ci.yml)
 
 Lightweight event bus over Redis Streams. Define typed events, publish from one service, consume in others without boilerplate or framework dependencies.
 
@@ -156,6 +156,8 @@ Both synchronous and asynchronous Streambus APIs support event-driven decoupling
 
 ## Async support
 
+The asynchronous listener also recovers idle pending messages using Redis `XAUTOCLAIM` before reading new events. Set `pending_idle_ms` (default: `60000`) on `AsyncEventListener` to configure the minimum idle time. As with the synchronous listener, handlers must be idempotent.
+
 streambus ships async-native counterparts for both publisher and listener. They share the same API as the sync versions — the only difference is `async def` and `await`.
 
 ```python
@@ -194,6 +196,14 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## Package structure
+
+- `streambus/publishers/`: synchronous and asynchronous event publishing.
+- `streambus/consumers/`: synchronous and asynchronous event consumption and acknowledgement.
+- `streambus/transports/`: transport protocols and Redis Streams implementations.
+
+The public imports remain available directly from `streambus`. Direct imports of internal modules must use the new package paths.
 
 ## How it works
 

@@ -24,6 +24,9 @@ class MockAsyncTransport:
         batch, self._messages = self._messages[:batch_size], self._messages[batch_size:]
         return batch
 
+    async def claim_pending(self, stream, group, consumer, batch_size, min_idle_ms):
+        return []
+
     async def ack(self, stream, group, msg_id):
         self.acked.append(msg_id)
 
