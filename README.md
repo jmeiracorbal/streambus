@@ -156,6 +156,8 @@ Both synchronous and asynchronous Streambus APIs support event-driven decoupling
 
 ## Async support
 
+The asynchronous listener also recovers idle pending messages using Redis `XAUTOCLAIM` before reading new events. Set `pending_idle_ms` (default: `60000`) on `AsyncEventListener` to configure the minimum idle time. As with the synchronous listener, handlers must be idempotent.
+
 streambus ships async-native counterparts for both publisher and listener. They share the same API as the sync versions — the only difference is `async def` and `await`.
 
 ```python
@@ -194,6 +196,14 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## Package structure
+
+- `streambus/publishers/`: synchronous and asynchronous event publishing.
+- `streambus/consumers/`: synchronous and asynchronous event consumption and acknowledgement.
+- `streambus/transports/`: transport protocols and Redis Streams implementations.
+
+The public imports remain available directly from `streambus`. Direct imports of internal modules must use the new package paths.
 
 ## How it works
 

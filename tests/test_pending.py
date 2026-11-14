@@ -4,7 +4,7 @@ import fakeredis
 
 from streambus import EventListener, StreamBusEvent
 from streambus.config import RedisConfig
-from streambus.transports.redis_streams import RedisStreamsTransport
+from streambus.transports.redis import RedisStreamsTransport
 
 
 @dataclass(kw_only=True)

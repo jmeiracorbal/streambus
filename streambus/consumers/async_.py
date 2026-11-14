@@ -1,22 +1,22 @@
+import asyncio
 import logging
-import time
-from typing import Callable
+from collections.abc import Awaitable, Callable
 
+from streambus.transports.protocols import AsyncEventTransport
 from streambus.event import StreamBusEvent
 from streambus.exceptions import ConfigurationError, TransportConnectionError
-from streambus.transport import EventTransport
 
 logger = logging.getLogger(__name__)
 
 
-class EventListener:
+class AsyncEventListener:
     def __init__(
         self,
         stream: str,
         group: str,
-        handler: Callable[[StreamBusEvent], None],
+        handler: Callable[[StreamBusEvent], Awaitable[None]],
         event_class: type[StreamBusEvent],
-        transport: EventTransport,
+        transport: AsyncEventTransport,
         consumer: str | None = None,
         batch_size: int = 10,
         block_ms: int = 5000,
@@ -45,39 +45,38 @@ class EventListener:
         self.retry_delay = retry_delay
         self.pending_idle_ms = pending_idle_ms
 
-    def process_one_batch(self) -> int:
-        # XAUTOCLAIM recovers unacknowledged messages from crashed/failed consumers.
-        messages = self.transport.claim_pending(
+    async def process_one_batch(self) -> int:
+        # Recover idle entries before consuming new messages (at-least-once delivery).
+        messages = await self.transport.claim_pending(
             self.stream, self.group, self.consumer, self.batch_size, self.pending_idle_ms,
         )
         if not messages:
-            messages = self.transport.read(
+            messages = await self.transport.read(
                 self.stream, self.group, self.consumer, self.batch_size, self.block_ms,
             )
         count = 0
         for msg_id, data in messages:
             try:
                 event = self.event_class.from_dict(data)
-                self.handler(event)
-                self.transport.ack(self.stream, self.group, msg_id)
+                await self.handler(event)
+                await self.transport.ack(self.stream, self.group, msg_id)
                 count += 1
             except Exception:
-                # Leave the message in the pending entries list for retry after min idle.
                 logger.exception("error processing message %s", msg_id)
         return count
 
-    def run(self) -> None:
-        self.transport.ensure_group(self.stream, self.group)
+    async def run(self) -> None:
+        await self.transport.ensure_group(self.stream, self.group)
         logger.info("[%s] listening on %s", self.group, self.stream)
 
         while True:
             try:
-                self.process_one_batch()
+                await self.process_one_batch()
             except TransportConnectionError:
                 logger.warning(
                     "[%s] transport connection lost, retrying in %.1fs",
                     self.group,
                     self.retry_delay,
                 )
-                time.sleep(self.retry_delay)
-                self.transport.reconnect()
+                await asyncio.sleep(self.retry_delay)
+                await self.transport.reconnect()

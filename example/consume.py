@@ -7,12 +7,12 @@ Usage:
 import logging
 from dataclasses import dataclass
 
-from streambus import EventListener, RedisConfig, StreamBusEvent
+from streambus import EventListener, RedisConfig, RedisStreamsTransport, StreamBusEvent
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ClientEvent(StreamBusEvent):
     client_id: str = ""
     name: str = ""
@@ -34,5 +34,5 @@ EventListener(
     group="example",
     handler=handle,
     event_class=ClientEvent,
-    config=RedisConfig(url="redis://localhost:6379"),
+    transport=RedisStreamsTransport(RedisConfig(url="redis://localhost:6379")),
 ).run()

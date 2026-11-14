@@ -1,14 +1,14 @@
-from .async_listener import AsyncEventListener
-from .async_publisher import AsyncEventPublisher
-from .async_transport import AsyncEventTransport
+from .consumers.async_ import AsyncEventListener
+from .publishers.async_ import AsyncEventPublisher
+from .transports.protocols import AsyncEventTransport
 from .config import RedisConfig
 from .event import StreamBusEvent
 from .exceptions import ConfigurationError, EventValidationError, StreambusError, TransportConnectionError
-from .listener import EventListener
-from .publisher import EventPublisher
-from .transport import EventTransport
-from .transports.async_redis_streams import AsyncRedisStreamsTransport
-from .transports.redis_streams import RedisStreamsTransport
+from .consumers.sync import EventListener
+from .publishers.sync import EventPublisher
+from .transports.protocols import EventTransport
+from .transports.async_redis import AsyncRedisStreamsTransport
+from .transports.redis import RedisStreamsTransport
 
 __all__ = [
     "AsyncEventListener",
@@ -26,4 +26,4 @@ __all__ = [
     "EventValidationError",
     "TransportConnectionError",
 ]
-__version__ = "0.2.2"
+__version__ = "0.3.2"

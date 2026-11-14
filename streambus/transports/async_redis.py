@@ -42,6 +42,17 @@ class AsyncRedisStreamsTransport:
         except redis_lib.exceptions.ConnectionError as exc:
             raise TransportConnectionError(str(exc)) from exc
 
+    async def claim_pending(self, stream: str, group: str, consumer: str, batch_size: int, min_idle_ms: int) -> list[tuple[str, dict]]:
+        """Recover idle unacknowledged entries, including entries owned by other consumers."""
+        try:
+            _cursor, messages, *_deleted = await self._get_client().xautoclaim(
+                stream, group, consumer, min_idle_time=min_idle_ms, start_id="0-0",
+                count=batch_size,
+            )
+            return [(msg_id, data) for msg_id, data in messages]
+        except redis_lib.exceptions.ConnectionError as exc:
+            raise TransportConnectionError(str(exc)) from exc
+
     async def ack(self, stream: str, group: str, msg_id: str) -> None:
         try:
             await self._get_client().xack(stream, group, msg_id)
